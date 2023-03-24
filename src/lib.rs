@@ -49,7 +49,8 @@ pub struct BallotContract;
 #[contractimpl]
 impl BallotContract {
     
-    pub fn add_party(env: Env, name: Symbol) -> u32  {
+    pub fn add_party(env: Env, admin: Address, name: Symbol) -> u32  {
+        admin.require_auth();
         let mut parties: Vec<Symbol>= get_parties(&env);
 
         if ! parties.contains(&name) {
@@ -60,7 +61,8 @@ impl BallotContract {
         parties.len() as u32
     }
 
-    pub fn add_voter(env: Env, addr: Address) -> u32{
+    pub fn add_voter(env: Env, admin: Address, addr: Address) -> u32 {
+        admin.require_auth();
         let mut voters: Vec<Address> = get_voters(&env);
         
         if ! voters.contains(&addr) {
