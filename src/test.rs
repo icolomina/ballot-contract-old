@@ -1,7 +1,7 @@
 #![cfg(test)]
 
-use super::{BallotContract, BallotContractClient, Party, Voter };
-use soroban_sdk::{Env, symbol, vec, testutils::Address as _, Address};
+use super::{BallotContract, BallotContractClient};
+use soroban_sdk::{Env, symbol, testutils::Address as _, Address};
 
 extern crate std;
 
