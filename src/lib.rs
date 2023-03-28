@@ -1,6 +1,6 @@
 #![no_std]
 
-use soroban_sdk::{contractimpl, contracttype, symbol, Env, Symbol, Vec, Map, Address, log};
+use soroban_sdk::{contractimpl, contracttype, contracterror, symbol, Env, Symbol, Vec, Map, Address, panic_with_error};
 
 const PARTIES: Symbol = symbol!("parties");
 const VOTERS: Symbol = symbol!("voters");
@@ -50,10 +50,43 @@ fn get_delegated_votes(env: &Env, addr: &Address) -> Vec<Address> {
     votes
 }
 
+fn is_vote_delegated(env: &Env, v_to_delegate: &Address, voters: &Vec<Address>) -> bool {
+    let mut already_delegated = false;
+    let mut i = 0;
+    while i < voters.len() && !already_delegated {
+
+        let voter = voters.get(i).unwrap();
+        match voter {
+            Ok(vot) => {
+                let d_votes = get_delegated_votes(&env, &vot);
+                if d_votes.contains(v_to_delegate) {
+                    already_delegated = true;
+                }
+            },
+            Err(_e) => ()
+        }
+
+        i += 1;
+    }
+
+    already_delegated
+}
+
 #[contracttype]
 pub enum PartyCounter {
     Counter(Symbol),
 }
+
+#[contracterror]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
+#[repr(u32)]
+pub enum Error {
+    VoterDelegated = 1,
+    VoterNotRegistered = 2,
+    PartyNotRegistered = 3,
+    VoterAlreadyVoted = 4
+}
+
 
 pub struct BallotContract;
 
@@ -86,31 +119,43 @@ impl BallotContract {
 
     pub fn vote(env: Env, voter: Address, party: Symbol) -> bool {
 
-        let mut vote_added = false;
+        let voters: Vec<Address>      = get_voters(&env);
+
+        if is_vote_delegated(&env, &voter, &voters) {
+            panic_with_error!(&env, Error::VoterDelegated);
+        }
+
         let mut count_sum = 1;
 
         let parties: Vec<Symbol>      = get_parties(&env);
-        let voters: Vec<Address>      = get_voters(&env);
         let mut votes: Vec<Address>   = get_votes(&env);
 
-        if voters.contains(&voter) && parties.contains(&party) && !votes.contains(&voter) {
-            let party_counter_key = PartyCounter::Counter(party);
-            let mut count: u32 = env.storage().get(&party_counter_key).unwrap_or(Ok(0)).unwrap(); 
-
-            let v_delegated_votes = get_delegated_votes(&env, &voter);
-            if v_delegated_votes.len() > 0 {
-                count_sum = v_delegated_votes.len() + 1;
-            }
-
-            count += count_sum;
-            env.storage().set(&party_counter_key, &count);
-            vote_added = true;
-            votes.push_back(voter);
-            env.storage().set(&VOTES, &votes);
+        if !parties.contains(&party) {
+            panic_with_error!(&env, Error::PartyNotRegistered);
         }
 
+        if votes.contains(&voter) {
+            panic_with_error!(&env, Error::VoterAlreadyVoted);
+        }
 
-        vote_added
+        if !voters.contains(&voter) {
+            panic_with_error!(&env, Error::VoterNotRegistered);
+        }
+
+        let party_counter_key = PartyCounter::Counter(party);
+        let mut count: u32 = env.storage().get(&party_counter_key).unwrap_or(Ok(0)).unwrap(); 
+
+        let v_delegated_votes = get_delegated_votes(&env, &voter);
+        if v_delegated_votes.len() > 0 {
+            count_sum = v_delegated_votes.len() + 1;
+        }
+
+        count += count_sum;
+        env.storage().set(&party_counter_key, &count);
+        votes.push_back(voter);
+        env.storage().set(&VOTES, &votes);
+
+        true
     }
  
     pub fn count(env: Env) -> Map<Symbol, u32> {
@@ -136,27 +181,10 @@ impl BallotContract {
     pub fn delegate(env: Env, v_to_delegate: Address, v_delegate: Address) -> Vec<Address> {
         let voters = get_voters(&env);
         if !voters.contains(&v_to_delegate) || !voters.contains(&v_delegate) {
-            panic!("Voter or voter to delegate to are not registered");
+            panic_with_error!(&env, Error::VoterNotRegistered);
         }
 
-        let mut already_delegated = false;
-        let mut i = 0;
-        while i < voters.len() && !already_delegated {
-
-            let voter = voters.get(i).unwrap();
-            match voter {
-                Ok(vot) => {
-                    let d_votes = get_delegated_votes(&env, &vot);
-                    log!(&env, "D votes {?:}", d_votes);
-                    if d_votes.contains(&v_to_delegate) {
-                        already_delegated = true;
-                    }
-                },
-                Err(_e) => ()
-            }
-
-            i += 1;
-        }
+        let already_delegated = is_vote_delegated(&env, &v_to_delegate, &voters);
 
         let mut d_votes = get_delegated_votes(&env, &v_delegate);
         if !already_delegated {
