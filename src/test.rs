@@ -33,7 +33,8 @@ fn add_voter_test() {
 
 
     assert_eq!(client.add_voter(&admin_addr, &addr1), 1 );
-    assert_eq!(client.add_voter(&admin_addr,&addr2), 2 );
+    assert_eq!(client.add_voter(&admin_addr, &addr2), 2 );
+    assert_eq!(client.add_voter(&admin_addr, &addr2), 2 );
 }
 
 #[test]
