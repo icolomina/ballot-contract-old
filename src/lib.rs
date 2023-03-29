@@ -6,6 +6,9 @@ const PARTIES: Symbol = symbol!("parties");
 const VOTERS: Symbol = symbol!("voters");
 const VOTES: Symbol = symbol!("votes");
 
+/**
+ * Get registered parties from storage
+ */
 fn get_parties(env: &Env) -> Vec<Symbol> {
     let parties: Vec<Symbol>= env
         .storage()
@@ -17,6 +20,9 @@ fn get_parties(env: &Env) -> Vec<Symbol> {
     parties
 }
 
+/**
+ * Get registered voters from storage
+ */
 fn get_voters(env: &Env) -> Vec<Address> {
     let voters: Vec<Address>= env
         .storage()
@@ -28,6 +34,9 @@ fn get_voters(env: &Env) -> Vec<Address> {
     voters
 }
 
+/**
+ * Get voters which has voted so far from storage
+ */
 fn get_votes(env: &Env) -> Vec<Address> {
     let votes: Vec<Address> = env
         .storage()
@@ -39,6 +48,9 @@ fn get_votes(env: &Env) -> Vec<Address> {
     votes
 }
 
+/**
+ * Get voter delegated votes from storage
+ */
 fn get_delegated_votes(env: &Env, addr: &Address) -> Vec<Address> {
     let votes: Vec<Address> = env
         .storage()
@@ -50,6 +62,9 @@ fn get_delegated_votes(env: &Env, addr: &Address) -> Vec<Address> {
     votes
 }
 
+/**
+ * Check whether voter has its vote delegated
+ */
 fn is_vote_delegated(env: &Env, v_to_delegate: &Address, voters: &Vec<Address>) -> bool {
     let mut already_delegated = false;
     let mut i = 0;
@@ -72,11 +87,17 @@ fn is_vote_delegated(env: &Env, v_to_delegate: &Address, voters: &Vec<Address>) 
     already_delegated
 }
 
+/**
+ * Counter enum
+ */
 #[contracttype]
 pub enum PartyCounter {
     Counter(Symbol),
 }
 
+/**
+ * Possible errors enum
+ */
 #[contracterror]
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
 #[repr(u32)]
@@ -84,7 +105,8 @@ pub enum Error {
     VoterDelegated = 1,
     VoterNotRegistered = 2,
     PartyNotRegistered = 3,
-    VoterAlreadyVoted = 4
+    VoterAlreadyVoted = 4,
+    VoterHasDelegatedVotes = 5
 }
 
 
@@ -93,6 +115,9 @@ pub struct BallotContract;
 #[contractimpl]
 impl BallotContract {
     
+    /**
+     * Register party if not registered
+     */
     pub fn add_party(env: Env, admin: Address, name: Symbol) -> u32  {
         admin.require_auth();
         let mut parties: Vec<Symbol>= get_parties(&env);
@@ -105,6 +130,9 @@ impl BallotContract {
         parties.len() as u32
     }
 
+    /**
+     * Register voter if not registered
+     */
     pub fn add_voter(env: Env, admin: Address, addr: Address) -> u32 {
         admin.require_auth();
         let mut voters: Vec<Address> = get_voters(&env);
@@ -122,7 +150,7 @@ impl BallotContract {
         let voters: Vec<Address>      = get_voters(&env);
 
         if is_vote_delegated(&env, &voter, &voters) {
-            panic_with_error!(&env, Error::VoterDelegated);
+            panic_with_error!(&env, Error::VoterDelegated); // If voter has his/her vote delegated, cannot vote
         }
 
         let mut count_sum = 1;
@@ -131,15 +159,15 @@ impl BallotContract {
         let mut votes: Vec<Address>   = get_votes(&env);
 
         if !parties.contains(&party) {
-            panic_with_error!(&env, Error::PartyNotRegistered);
-        }
-
-        if votes.contains(&voter) {
-            panic_with_error!(&env, Error::VoterAlreadyVoted);
+            panic_with_error!(&env, Error::PartyNotRegistered); // cannot vote for a non registered party
         }
 
         if !voters.contains(&voter) {
-            panic_with_error!(&env, Error::VoterNotRegistered);
+            panic_with_error!(&env, Error::VoterNotRegistered); // Voter which is not registered cannot vote
+        }
+
+        if votes.contains(&voter) {
+            panic_with_error!(&env, Error::VoterAlreadyVoted); // Voter cannot vote twice
         }
 
         let party_counter_key = PartyCounter::Counter(party);
@@ -147,7 +175,7 @@ impl BallotContract {
 
         let v_delegated_votes = get_delegated_votes(&env, &voter);
         if v_delegated_votes.len() > 0 {
-            count_sum = v_delegated_votes.len() + 1;
+            count_sum = v_delegated_votes.len() + 1; // count voter vote and his/her delegated votes
         }
 
         count += count_sum;
@@ -158,6 +186,9 @@ impl BallotContract {
         true
     }
  
+    /**
+     * Loop over all parties ang gets its counter value. Returns a map as PartyName -> votes count
+     */
     pub fn count(env: Env) -> Map<Symbol, u32> {
         
         let parties = get_parties(&env);
@@ -181,12 +212,18 @@ impl BallotContract {
     pub fn delegate(env: Env, v_to_delegate: Address, v_delegate: Address) -> Vec<Address> {
         let voters = get_voters(&env);
         if !voters.contains(&v_to_delegate) || !voters.contains(&v_delegate) {
-            panic_with_error!(&env, Error::VoterNotRegistered);
+            panic_with_error!(&env, Error::VoterNotRegistered); // Voter and voter to delegate to must be registered
+        }
+
+        let d_vts_to_delegate = get_delegated_votes(&env, &v_to_delegate);
+        if d_vts_to_delegate.len() > 0 {
+            panic_with_error!(&env, Error::VoterHasDelegatedVotes);  // A voter which has delegated votes cannot delegate his/her vote
         }
 
         let already_delegated = is_vote_delegated(&env, &v_to_delegate, &voters);
-
         let mut d_votes = get_delegated_votes(&env, &v_delegate);
+
+        // If v_to_delegate has not delegated his/her voter so far, then delegate it.
         if !already_delegated {
             d_votes.push_back(v_to_delegate);
             env.storage().set(&v_delegate, &d_votes);

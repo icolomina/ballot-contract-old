@@ -182,3 +182,25 @@ fn delegate_fail() {
 
     client.delegate(&addr1, &addr2);
 }
+
+#[test]
+#[should_panic(expected = "Error(5)")]
+fn delegate_fail_voter() {
+
+    let env = Env::default();
+    let contract_id = env.register_contract(None, BallotContract);
+    let client = BallotContractClient::new(&env, &contract_id);   
+
+    let addr1 = Address::random(&env);
+    let addr2 = Address::random(&env);
+    let addr3 = Address::random(&env);
+    let admin_addr = Address::random(&env);
+
+    client.add_voter(&admin_addr, &addr1);
+    client.add_voter(&admin_addr, &addr2);
+    client.add_voter(&admin_addr, &addr3);
+
+    client.delegate(&addr1, &addr2);
+    client.delegate(&addr2, &addr3);
+
+}
