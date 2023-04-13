@@ -1,10 +1,10 @@
 #![no_std]
 
-use soroban_sdk::{contractimpl, contracttype, contracterror, symbol, Env, Symbol, Vec, Map, Address, panic_with_error};
+use soroban_sdk::{contractimpl, contracttype, contracterror, Env, Symbol, Vec, Map, Address, panic_with_error};
 
-const PARTIES: Symbol = symbol!("parties");
-const VOTERS: Symbol = symbol!("voters");
-const VOTES: Symbol = symbol!("votes");
+const PARTIES: Symbol = Symbol::short("parties");
+const VOTERS: Symbol = Symbol::short("voters");
+const VOTES: Symbol = Symbol::short("votes");
 
 /**
  * Get registered parties from storage
@@ -196,9 +196,9 @@ impl BallotContract {
         for party in parties.iter() {
             match party {
                 Ok(p) => {
-                    let party_counter_key = PartyCounter::Counter(p);
+                    let party_counter_key = PartyCounter::Counter(p.clone());
                     let party_count: u32 = env.storage().get(&party_counter_key).unwrap_or(Ok(0)).unwrap(); 
-                    count_map.set(p, party_count);
+                    count_map.set(p.clone(), party_count);
                 },
                 _ => ()
             }

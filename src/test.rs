@@ -1,7 +1,7 @@
 #![cfg(test)]
 
 use super::{BallotContract, BallotContractClient};
-use soroban_sdk::{Env, symbol, testutils::Address as _, Address};
+use soroban_sdk::{Env, Symbol, testutils::Address as _, Address};
 
 extern crate std;
 
@@ -15,9 +15,9 @@ fn add_party_test() {
     let admin_addr = Address::random(&env);
     
     // Testing 
-    assert_eq!(client.add_party(&admin_addr, &symbol!("Laborist")), 1 );
-    assert_eq!(client.add_party(&admin_addr, &symbol!("Conserv")), 2);
-    assert_eq!(client.add_party(&admin_addr, &symbol!("Conserv")), 2);
+    assert_eq!(client.add_party(&admin_addr, &Symbol::short("Laborist")), 1 );
+    assert_eq!(client.add_party(&admin_addr, &Symbol::short("Conserv")), 2);
+    assert_eq!(client.add_party(&admin_addr, &Symbol::short("Conserv")), 2);
 
 }
 
@@ -52,8 +52,8 @@ fn vote_test() {
 
     let admin_addr = Address::random(&env);
 
-    client.add_party(&admin_addr, &symbol!("Laborist"));
-    client.add_party(&admin_addr, &symbol!("Conserv"));
+    client.add_party(&admin_addr, &Symbol::short("Laborist"));
+    client.add_party(&admin_addr, &Symbol::short("Conserv"));
 
     client.add_voter(&admin_addr, &addr1);
     client.add_voter(&admin_addr, &addr2);
@@ -63,15 +63,15 @@ fn vote_test() {
 
     client.delegate(&addr5, &addr4);
 
-    assert_eq!(client.vote(&addr1, &symbol!("Laborist")), true);
-    assert_eq!(client.vote(&addr2, &symbol!("Laborist")), true);
-    assert_eq!(client.vote(&addr3, &symbol!("Conserv")), true);
-    assert_eq!(client.vote(&addr4, &symbol!("Conserv")), true);
+    assert_eq!(client.vote(&addr1, &Symbol::short("Laborist")), true);
+    assert_eq!(client.vote(&addr2, &Symbol::short("Laborist")), true);
+    assert_eq!(client.vote(&addr3, &Symbol::short("Conserv")), true);
+    assert_eq!(client.vote(&addr4, &Symbol::short("Conserv")), true);
 
     let result = client.count();
 
-    assert_eq!(result.get(symbol!("Laborist")).unwrap().ok(), Some(2));
-    assert_eq!(result.get(symbol!("Conserv")).unwrap().ok(), Some(3));
+    assert_eq!(result.get(Symbol::short("Laborist")).unwrap().ok(), Some(2));
+    assert_eq!(result.get(Symbol::short("Conserv")).unwrap().ok(), Some(3));
     
 }
 
@@ -87,14 +87,14 @@ fn vote_delegated() {
     let addr2 = Address::random(&env);
     let admin_addr = Address::random(&env);
 
-    client.add_party(&admin_addr, &symbol!("Laborist"));
-    client.add_party(&admin_addr, &symbol!("Conserv"));
+    client.add_party(&admin_addr, &Symbol::short("Laborist"));
+    client.add_party(&admin_addr, &Symbol::short("Conserv"));
 
     client.add_voter(&admin_addr, &addr1);
     client.add_voter(&admin_addr, &addr2);
 
     client.delegate(&addr1, &addr2);
-    client.vote(&addr1, &symbol!("Laborist"));
+    client.vote(&addr1, &Symbol::short("Laborist"));
 }
 
 #[test]
@@ -108,10 +108,10 @@ fn vote_party_not_registered() {
     let addr1 = Address::random(&env);
     let admin_addr = Address::random(&env);
 
-    client.add_party(&admin_addr, &symbol!("Laborist"));
+    client.add_party(&admin_addr, &Symbol::short("Laborist"));
     client.add_voter(&admin_addr, &addr1);
 
-    client.vote(&addr1, &symbol!("Conserv"));
+    client.vote(&addr1, &Symbol::short("Conserv"));
 }
 
 #[test]
@@ -125,11 +125,11 @@ fn vote_voter_already_voted() {
     let addr1 = Address::random(&env);
     let admin_addr = Address::random(&env);
 
-    client.add_party(&admin_addr, &symbol!("Laborist"));
+    client.add_party(&admin_addr, &Symbol::short("Laborist"));
     client.add_voter(&admin_addr, &addr1);
 
-    client.vote(&addr1, &symbol!("Laborist"));
-    client.vote(&addr1, &symbol!("Laborist"));
+    client.vote(&addr1, &Symbol::short("Laborist"));
+    client.vote(&addr1, &Symbol::short("Laborist"));
 }
 
 #[test]
@@ -143,8 +143,8 @@ fn vote_voter_not_registered() {
     let addr1 = Address::random(&env);
     let admin_addr = Address::random(&env);
 
-    client.add_party(&admin_addr, &symbol!("Laborist"));
-    client.vote(&addr1, &symbol!("Laborist"));
+    client.add_party(&admin_addr, &Symbol::short("Laborist"));
+    client.vote(&addr1, &Symbol::short("Laborist"));
 }
 
 #[test]
